@@ -34,38 +34,57 @@ namespace net_instaweb {
 
 }  // namespace net_instaweb
 
+using net_instaweb::MessageHandler;
 using net_instaweb::GoogleMessageHandler;
 using net_instaweb::StrCat;
 using pagespeed::image_compression::ImageOptimizer;
 using pagespeed::image_compression::ImageOptions;
 using pagespeed::image_compression::ImageFormat;
 
-bool ReadFile(const GoogleString& file_name,
-              GoogleString* content) {
+bool ReadStdin(GoogleString* content,
+               MessageHandler* message_handler) {
   content->clear();
   net_instaweb::StdioFileSystem file_system;
-  net_instaweb::MockMessageHandler message_handler(new net_instaweb::NullMutex);
   net_instaweb::StringWriter writer(content);
-  return(file_system.ReadFile(file_name.c_str(), &writer, &message_handler));
+  return(file_system.ReadFile(file_system.Stdin(), &writer, message_handler));
 }
 
-bool WriteFile(const GoogleString& content) {
-  return fwrite(content.data(), 1, content.size(), stdout) == content.size();
+bool ReadFile(const GoogleString& file_name,
+              GoogleString* content,
+              MessageHandler* message_handler) {
+  content->clear();
+  net_instaweb::StdioFileSystem file_system;
+  net_instaweb::StringWriter writer(content);
+  return(file_system.ReadFile(file_name.c_str(), &writer, message_handler));
+}
+
+bool WriteStdout(const GoogleString& content,
+                 MessageHandler* message_handler) {
+  net_instaweb::StdioFileSystem file_system;
+  return file_system.Stdout()->Write(content, message_handler);
+}
+
+int help(char** argv) {
+  fprintf(stderr, "Usage: %s < input_file > output_file\n", argv[0]);
+  return 1;
 }
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    fprintf(stderr, "Usage: %s input_file\n", argv[0]);
-    return 1;
+  if (argc != 1) {
+    return help(argv);
   }
     
+  GoogleMessageHandler message_handler;
+
   GoogleString original_image;
-  if (!ReadFile(argv[1], &original_image)) {
+  if (!ReadStdin(&original_image, &message_handler)) {
     fprintf(stderr, "unable to process input file\n");
     return 2;
   }
+  if (original_image.length() == 0) {
+    return help(argv);
+  }
 
-  GoogleMessageHandler message_handler;
   GoogleString rewritten_image;
   ImageFormat rewritten_format;
   
@@ -87,11 +106,11 @@ int main(int argc, char** argv) {
             ImageFormatToMimeTypeString(rewritten_format),
             optimizer.optimized_width(), 
             optimizer.optimized_height());
-    WriteFile(rewritten_image);
+    WriteStdout(rewritten_image, &message_handler);
     return 0;
   } else {
-    fprintf(stderr, "unable to create output file\n");
-    WriteFile(original_image);
+    fprintf(stderr, "unable to optimize file\n");
+    WriteStdout(original_image, &message_handler);
     return 1;
   }
 }
