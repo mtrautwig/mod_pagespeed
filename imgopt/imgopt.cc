@@ -66,7 +66,7 @@ bool WriteStdout(const GoogleString& content,
 
 int help(char** argv) {
   fprintf(stderr, "Usage: %s < input_file > output_file\n", argv[0]);
-  return 1;
+  return 2;
 }
 
 int main(int argc, char** argv) {
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
   GoogleString original_image;
   if (!ReadStdin(&original_image, &message_handler)) {
     fprintf(stderr, "unable to process input file\n");
-    return 2;
+    return 1;
   }
   if (original_image.length() == 0) {
     return help(argv);
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
   ImageFormat rewritten_format;
   
   ImageOptions options;
-  options.set_must_reduce_bytes(true);
+  options.set_must_reduce_bytes(false);
   options.set_allow_png(true);
   options.set_allow_jpeg(true);
   options.set_allow_webp_lossy(false);
